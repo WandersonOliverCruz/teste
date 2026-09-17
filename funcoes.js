@@ -1,10 +1,11 @@
 const CONFIG = {
     sistemaNome: "Sistema TI",
-    fundoPadrao: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1920&q=85",
-    opacidadeFundo: 80,
-    desfoqueFundo: 4,
-    corPrincipalPadrao: "#4f46e5",
-    corTextoPadrao: "#334155",
+    fundoPadrao: "imagens/fundo.jpg",
+    logoPadrao: "imagens/logo.png", 
+    opacidadeFundo: 20,           
+    desfoqueFundo: 4,             
+    corPrincipalPadrao: "#37a928", 
+    corTextoPadrao: "#000000",     
     fontePadrao: "Inter, sans-serif"
 };
 
@@ -21,14 +22,25 @@ const DB = {
     }
 };
 
+// Trava Geral de Segurança: Verifica se o usuário logado é Administrador
+function validarPermissaoAdmin() {
+    if (!usuarioLogado || usuarioLogado.perfil !== 'ADM') {
+        alert('Acesso negado! Apenas Administradores podem remover ou alterar registros.');
+        return false;
+    }
+    return true;
+}
+
 const Aparencia = {
     salvar(logoBase64, fundoBase64, opacidade, desfoque, corPrincipal, corTexto, fonteTexto) {
+        if (!validarPermissaoAdmin()) return;
+
         const atual = DB.get('aparencia', {});
         const aparencia = {
-            logo: logoBase64 || atual.logo,
-            fundo: fundoBase64 || atual.fundo,
-            opacidade: opacidade ?? atual.opacidade ?? CONFIG.opacidadeFundo,
-            desfoque: desfoque ?? atual.desfoque ?? CONFIG.desfoqueFundo,
+            logo: logoBase64 !== undefined ? logoBase64 : (atual.logo || CONFIG.logoPadrao),
+            fundo: fundoBase64 !== undefined ? fundoBase64 : (atual.fundo || CONFIG.fundoPadrao),
+            opacidade: opacidade !== undefined ? Number(opacidade) : (atual.opacidade ?? CONFIG.opacidadeFundo),
+            desfoque: desfoque !== undefined ? Number(desfoque) : (atual.desfoque ?? CONFIG.desfoqueFundo),
             corPrincipal: corPrincipal || atual.corPrincipal || CONFIG.corPrincipalPadrao,
             corTexto: corTexto || atual.corTexto || CONFIG.corTextoPadrao,
             fonteTexto: fonteTexto || atual.fonteTexto || CONFIG.fontePadrao,
@@ -40,6 +52,7 @@ const Aparencia = {
     aplicar() {
         const aparencia = DB.get('aparencia', {
             fundo: CONFIG.fundoPadrao,
+            logo: CONFIG.logoPadrao,
             opacidade: CONFIG.opacidadeFundo,
             desfoque: CONFIG.desfoqueFundo,
             corPrincipal: CONFIG.corPrincipalPadrao,
@@ -47,45 +60,45 @@ const Aparencia = {
             fonteTexto: CONFIG.fontePadrao
         });
         
-        const fundoEl = document.querySelectorAll('.fundo-personalizado, .fundo-sistema-personalizado');
-        fundoEl.forEach(el => {
-            el.style.backgroundImage = `url('${aparencia.fundo || CONFIG.fundoPadrao}')`;
-        });
+        const fundoUrl = aparencia.fundo || CONFIG.fundoPadrao;
+        const telaLogin = document.getElementById('tela-login');
+        const sistemaEl = document.getElementById('sistema');
+
+        if (telaLogin) {
+            telaLogin.style.backgroundImage = `url('${fundoUrl}')`;
+            telaLogin.style.backgroundSize = 'cover';
+            telaLogin.style.backgroundPosition = 'center';
+        }
+        if (sistemaEl) {
+            sistemaEl.style.backgroundImage = `url('${fundoUrl}')`;
+            sistemaEl.style.backgroundSize = 'cover';
+            sistemaEl.style.backgroundPosition = 'center';
+        }
+
         const camadas = document.querySelectorAll('.camada-sobreposicao, .camada-sistema-sobreposicao');
         camadas.forEach(camada => {
-            const opacidadeDec = (aparencia.opacidade || 80) / 100;
+            const opacidadeDec = (aparencia.opacidade !== undefined ? aparencia.opacidade : CONFIG.opacidadeFundo) / 100;
             camada.style.backgroundColor = `rgba(15, 23, 42, ${opacidadeDec})`;
-            camada.style.backdropFilter = `blur(${aparencia.desfoque || 4}px)`;
+            camada.style.backdropFilter = `blur(${aparencia.desfoque !== undefined ? aparencia.desfoque : CONFIG.desfoqueFundo}px)`;
+            camada.style.webkitBackdropFilter = `blur(${aparencia.desfoque !== undefined ? aparencia.desfoque : CONFIG.desfoqueFundo}px)`;
         });
 
         const cor = aparencia.corPrincipal || CONFIG.corPrincipalPadrao;
         document.documentElement.style.setProperty('--cor-principal', cor);
-        document.documentElement.style.setProperty('--cor-principal-sombra', ajustarCorSombra(cor));
         document.documentElement.style.setProperty('--cor-principal-clara', `${cor}15`);
-        document.documentElement.style.setProperty('--cor-principal-borda', `${cor}30`);
 
         const corTexto = aparencia.corTexto || CONFIG.corTextoPadrao;
         document.documentElement.style.setProperty('--cor-texto-padrao', corTexto);
         document.body.style.color = corTexto;
 
-        const elementosTexto = document.querySelectorAll('p, span, h1, h2, h3, h4, h5, h6, label, th, td, a');
-        elementosTexto.forEach(el => {
-            if (!el.classList.contains('text-rose-600') && !el.classList.contains('text-emerald-600') && 
-                !el.classList.contains('text-amber-600') && !el.classList.contains('text-white') && 
-                !el.classList.contains('text-indigo-600')) {
-                el.style.color = corTexto;
-            }
-        });
-
         const fonte = aparencia.fonteTexto || CONFIG.fontePadrao;
         document.body.style.fontFamily = fonte;
 
-        if (aparencia.logo) {
-            const login = document.getElementById('area-logo-login');
-            const menu = document.getElementById('area-logo-menu');
-            if (login) login.innerHTML = `<img src="${aparencia.logo}" alt="Logo" class="max-h-12 w-auto object-contain">`;
-            if (menu) menu.innerHTML = `<img src="${aparencia.logo}" alt="Logo" class="max-h-10 w-auto object-contain">`;
-        }
+        const logoUrl = aparencia.logo || CONFIG.logoPadrao;
+        const areasLogo = document.querySelectorAll('#area-logo-login, #area-logo-menu');
+        areasLogo.forEach(area => {
+            area.innerHTML = `<img src="${logoUrl}" alt="Logotipo do Sistema" class="max-h-12 w-auto object-contain">`;
+        });
     },
     async lerImagem(arquivo) {
         return new Promise((resolver, rejeitar) => {
@@ -96,19 +109,6 @@ const Aparencia = {
         });
     }
 };
-
-function ajustarCorSombra(hex) {
-    let c = hex.replace('#', '');
-    if (c.length === 3) c = c.split('').map(x => x + x).join('');
-    let num = parseInt(c, 16);
-    let r = (num >> 16) - 30;
-    let g = ((num >> 8) & 0x00ff) - 30;
-    let b = (num & 0x0000ff) - 30;
-    r = r < 0 ? 0 : r;
-    g = g < 0 ? 0 : g;
-    b = b < 0 ? 0 : b;
-    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
-}
 
 async function hashSenha(senha) {
     const encoder = new TextEncoder();
@@ -131,23 +131,35 @@ const MODULOS_SISTEMA = [
 
 let usuarios = DB.get('usuarios', []);
 (async () => {
-    if (usuarios.length === 0) {
-        const hashPadrao = await hashSenha('123');
-        usuarios = [
-            { 
-                id: 1, 
-                usuario: 'Wanderson', 
-                senha: hashPadrao, 
-                nome: 'Wanderson (Admin)', 
-                perfil: 'ADM', 
-                email: 'wanderson@suaempresa.com.br', 
-                ativo: true, 
-                aprovado: true,
-                permissoes: MODULOS_SISTEMA.map(m => m.id)
-            }
-        ];
-        salvarTudo();
+    const hashPadrao = await hashSenha('123');
+    const indexAdmin = usuarios.findIndex(u => u.usuario.toLowerCase() === 'wanderson');
+    
+    const dadosAdmin = {
+        id: 1,
+        usuario: 'wanderson',
+        senha: hashPadrao,
+        nome: 'Wanderson (Admin)',
+        perfil: 'ADM',
+        setor: 'Tecnologia da Informação',
+        liberacaoSetor: 'Acesso Total / Infraestrutura',
+        email: 'wanderson@suaempresa.com.br',
+        ativo: true,
+        aprovado: true,
+        permissoes: MODULOS_SISTEMA.map(m => m.id)
+    };
+
+    if (indexAdmin === -1) {
+        usuarios.push(dadosAdmin);
+    } else {
+        usuarios[indexAdmin].senha = hashPadrao;
+        usuarios[indexAdmin].perfil = 'ADM';
+        usuarios[indexAdmin].setor = 'Tecnologia da Informação';
+        usuarios[indexAdmin].liberacaoSetor = 'Acesso Total / Infraestrutura';
+        usuarios[indexAdmin].ativo = true;
+        usuarios[indexAdmin].aprovado = true;
+        usuarios[indexAdmin].permissoes = MODULOS_SISTEMA.map(m => m.id);
     }
+    salvarTudo();
 })();
 
 let equipamentos = DB.get('equipamentos', [
@@ -187,6 +199,8 @@ window.addEventListener('beforeunload', salvarTudo);
 
 let usuarioLogado = null;
 let paginaAtual = 'painel';
+let filtroPeriodoAtual = 'mes';
+let meuGrafico = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const anoAtualEl = document.getElementById('ano-atual');
@@ -195,6 +209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     configurarLogin();
     atualizarDataHora();
     setInterval(atualizarDataHora, 60000);
+    injetarEstiloImpressao();
 });
 
 function atualizarDataHora() {
@@ -202,28 +217,112 @@ function atualizarDataHora() {
     if (el) el.textContent = new Date().toLocaleString('pt-BR');
 }
 
+function injetarEstiloImpressao() {
+    if (document.getElementById('estilo-impressao-dinamico')) return;
+    const style = document.createElement('style');
+    style.id = 'estilo-impressao-dinamico';
+    style.innerHTML = `
+        @media print {
+            body * { visibility: hidden; }
+            .relatorio-impressao, .relatorio-impressao * { visibility: visible; }
+            .relatorio-impressao {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white !important;
+                color: black !important;
+                padding: 20px;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            .nao-imprimir { display: none !important; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function dispararImpressao(tituloRelatorio, elementoHtmlConteudo) {
+    const janela = window.open('', '_blank', 'width=900,height=650');
+    janela.document.write(`
+        <html>
+            <head>
+                <title>Relatório - ${tituloRelatorio}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; color: #333; margin: 20px; }
+                    h2 { text-align: center; color: #111; margin-bottom: 5px; }
+                    .info-cabecalho { text-align: center; font-size: 12px; color: #666; margin-bottom: 25px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+                    th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
+                    th { background-color: #f1f5f9; color: #1e293b; }
+                    tr:nth-child(even) { background-color: #f8fafc; }
+                    .rodape-relatorio { margin-top: 30px; font-size: 10px; text-align: center; color: #94a3b8; border-top: 1px solid #e2e8f0; pt: 10px; }
+                </style>
+            </head>
+            <body>
+                <h2>${CONFIG.sistemaNome} - Relatório de ${tituloRelatorio}</h2>
+                <div class="info-cabecalho">Emitido por: ${usuarioLogado ? usuarioLogado.nome : 'Sistema'} em ${new Date().toLocaleString('pt-BR')}</div>
+                ${elementoHtmlConteudo}
+                <div class="rodape-relatorio">Gerado automaticamente pelo ${CONFIG.sistemaNome}</div>
+                <script>
+                    window.onload = function() { window.print(); window.close(); }
+                </script>
+            </body>
+        </html>
+    `);
+    janela.document.close();
+}
+
 function configurarLogin() {
     const formLogin = document.getElementById('form-login');
     if (formLogin) {
         formLogin.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const usuario = document.getElementById('login-usuario').value;
+            const usuarioDigitado = document.getElementById('login-usuario').value.trim();
             const senha = document.getElementById('login-senha').value;
             const erro = document.getElementById('mensagem-erro');
             erro.classList.add('hidden');
+
             const hash = await hashSenha(senha);
-            const encontrado = usuarios.find(u => u.usuario.toLowerCase() === usuario.toLowerCase() && u.senha === hash);
+            const encontrado = usuarios.find(u => u.usuario.toLowerCase() === usuarioDigitado.toLowerCase());
+
             if (!encontrado) {
-                erro.textContent = 'Usuário ou senha incorretos!';
+                erro.textContent = 'Usuário não encontrado no sistema!';
                 erro.classList.remove('hidden');
                 return;
             }
+
+            if (encontrado.tentativasFalhas >= 3) {
+                erro.textContent = 'Conta temporariamente bloqueada por excesso de falhas. Contate um Administrador.';
+                erro.classList.remove('hidden');
+                return;
+            }
+
+            if (encontrado.senha !== hash) {
+                encontrado.tentativasFalhas = (encontrado.tentativasFalhas || 0) + 1;
+                salvarTudo();
+                const restantes = 3 - encontrado.tentativasFalhas;
+                erro.textContent = `Senha incorreta! Tentativas restantes: ${restantes > 0 ? restantes : 0}`;
+                erro.classList.remove('hidden');
+                return;
+            }
+
             if (!encontrado.ativo || !encontrado.aprovado) {
                 erro.textContent = 'Usuário inativo ou pendente de aprovação!';
                 erro.classList.remove('hidden');
                 return;
             }
+
+            encontrado.tentativasFalhas = 0;
             usuarioLogado = encontrado;
+            
+            historicoAlteracoes.unshift({
+                id: DB.proximoId(historicoAlteracoes),
+                acao: `Login bem-sucedido: ${usuarioLogado.nome} (${usuarioLogado.perfil})`,
+                data: new Date().toLocaleString('pt-BR')
+            });
+            salvarTudo();
+
             iniciarSistema();
         });
     }
@@ -242,10 +341,19 @@ function configurarLogin() {
     const btnSair = document.getElementById('btn-sair');
     if (btnSair) {
         btnSair.addEventListener('click', () => {
+            if (usuarioLogado) {
+                historicoAlteracoes.unshift({
+                    id: DB.proximoId(historicoAlteracoes),
+                    acao: `Logout do sistema: ${usuarioLogado.nome}`,
+                    data: new Date().toLocaleString('pt-BR')
+                });
+                salvarTudo();
+            }
             usuarioLogado = null;
             document.getElementById('tela-login').classList.remove('hidden');
             document.getElementById('sistema').classList.add('hidden');
             document.getElementById('form-login').reset();
+            Aparencia.aplicar();
         });
     }
 }
@@ -290,8 +398,8 @@ function construirMenu() {
         : todosItens.filter(item => permissoesUsuario.includes(item.id));
     
     menu.innerHTML = itensFiltrados.map(item => `
-        <div class="menu-item flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer ${paginaAtual === item.id ? 'menu-item-ativo shadow-sm' : 'hover:bg-slate-800/60'}" data-pagina="${item.id}" style="${paginaAtual === item.id ? 'background-color: var(--cor-principal); color: #ffffff;' : 'color: #cbd5e1;'}">
-            <div class="w-9 h-9 rounded-lg flex items-center justify-center text-sm shadow-sm" style="${paginaAtual === item.id ? 'background-color: rgba(255,255,255,0.2); color: #ffffff;' : 'background-color: #1e293b; color: var(--cor-principal);'}">
+        <div class="menu-item flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer ${paginaAtual === item.id ? 'menu-item-ativo shadow-sm' : 'hover:bg-slate-200/60'}" data-pagina="${item.id}" style="${paginaAtual === item.id ? 'background-color: var(--cor-principal); color: #ffffff;' : 'color: var(--cor-texto-padrao);'}">
+            <div class="w-9 h-9 rounded-lg flex items-center justify-center text-sm shadow-sm" style="${paginaAtual === item.id ? 'background-color: rgba(255,255,255,0.2); color: #ffffff;' : 'background-color: #f1f5f9; color: var(--cor-principal);'}">
                 <i class="fa-solid ${item.icone}"></i>
             </div>
             <div class="flex flex-col">
@@ -316,15 +424,15 @@ function navegarPara(pagina) {
     paginaAtual = pagina;
     construirMenu();
     const titulos = {
-        painel: 'Painel Principal <span class="text-xs font-normal text-slate-400 block mt-0.5">Visão geral e métricas de desempenho em tempo real</span>',
-        equipamentos: 'Gestão de Equipamentos <span class="text-xs font-normal text-slate-400 block mt-0.5">Controle completo do parque tecnológico e ativos</span>',
-        chamados: 'Central de Chamados <span class="text-xs font-normal text-slate-400 block mt-0.5">Acompanhamento e resolução de ocorrências de TI</span>',
-        'meus-chamados': 'Meus Chamados <span class="text-xs font-normal text-slate-400 block mt-0.5">Histórico e solicitações abertas por você</span>',
-        usuarios: 'Gerenciamento de Usuários <span class="text-xs font-normal text-slate-400 block mt-0.5">Controle de acessos, perfis, cadastros e permissões customizadas</span>',
-        categorias: 'Gestão de Categorias <span class="text-xs font-normal text-slate-400 block mt-0.5">Organização de tipos de problemas e subcategorias</span>',
-        setores: 'Gestão de Setores e Liberações <span class="text-xs font-normal text-slate-400 block mt-0.5">Alçadas e permissões corporativas estruturadas</span>',
-        aparencia: 'Aparência e Design <span class="text-xs font-normal text-slate-400 block mt-0.5">Personalização avançada de cores, fontes, fundo e logotipo</span>',
-        historico: 'Histórico de Alterações <span class="text-xs font-normal text-slate-400 block mt-0.5">Auditoria detalhada de eventos e modificações</span>'
+        painel: 'Painel Principal <span class="text-xs font-normal text-slate-500 block mt-0.5">Visão geral e métricas de desempenho em tempo real</span>',
+        equipamentos: 'Gestão de Equipamentos <span class="text-xs font-normal text-slate-500 block mt-0.5">Controle completo do parque tecnológico e ativos</span>',
+        chamados: 'Central de Chamados <span class="text-xs font-normal text-slate-500 block mt-0.5">Acompanhamento e resolução de ocorrências de TI</span>',
+        'meus-chamados': 'Meus Chamados <span class="text-xs font-normal text-slate-500 block mt-0.5">Histórico e solicitações abertas por você</span>',
+        usuarios: 'Gerenciamento de Usuários <span class="text-xs font-normal text-slate-500 block mt-0.5">Controle total de acessos, perfis, cadastros e permissões</span>',
+        categorias: 'Gestão de Categorias <span class="text-xs font-normal text-slate-500 block mt-0.5">Organização de tipos de problemas e subcategorias</span>',
+        setores: 'Gestão de Setores e Liberações <span class="text-xs font-normal text-slate-500 block mt-0.5">Alçadas e permissões corporativas estruturadas</span>',
+        aparencia: 'Aparência e Design <span class="text-xs font-normal text-slate-500 block mt-0.5">Personalização avançada de fontes, cores, botões, transparência e imagens</span>',
+        historico: 'Histórico de Alterações <span class="text-xs font-normal text-slate-500 block mt-0.5">Auditoria detalhada de eventos e modificações</span>'
     };
     const elTitulo = document.getElementById('titulo-pagina');
     if (elTitulo) elTitulo.innerHTML = titulos[pagina];
@@ -346,6 +454,7 @@ function navegarPara(pagina) {
     setTimeout(() => Aparencia.aplicar(), 50);
 }
 
+// 1. PAINEL PRINCIPAL
 function carregarPainel(container) {
     const abertos = chamados.filter(c => c.status === 'Aberto').length;
     const ativos = equipamentos.filter(e => e.status === 'Ativo').length;
@@ -354,220 +463,260 @@ function carregarPainel(container) {
     const taxaResolucao = totalChamados > 0 ? (((totalChamados - abertos) / totalChamados) * 100).toFixed(1) : 100;
     
     container.innerHTML = `
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-            <div class="painel relative overflow-hidden bg-white rounded-2xl p-5 shadow-sm border border-slate-100 transition-all hover:shadow-md">
-                <div class="absolute -right-4 -bottom-4 w-24 h-24 rounded-full opacity-10 pointer-events-none" style="background-color: var(--cor-principal);"></div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6 w-full">
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
                 <div class="flex items-center justify-between">
                     <div>
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Equipamentos Ativos</span>
-                        <h4 class="text-3xl font-black text-slate-800 mt-1">${ativos}</h4>
-                        <span class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 mt-2 bg-emerald-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-arrow-trend-up"></i> ${equipamentos.length} cadastrados</span>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Equipamentos Ativos</span>
+                        <h4 class="text-3xl font-black text-slate-900 mt-1">${ativos}</h4>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-inner" style="background-color: var(--cor-principal-clara); color: var(--cor-principal);">
+                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl" style="background-color: var(--cor-principal-clara); color: var(--cor-principal);">
                         <i class="fa-solid fa-desktop"></i>
                     </div>
                 </div>
             </div>
-
-            <div class="painel relative overflow-hidden bg-white rounded-2xl p-5 shadow-sm border border-slate-100 transition-all hover:shadow-md">
-                <div class="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-rose-500 opacity-10 pointer-events-none"></div>
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
                 <div class="flex items-center justify-between">
                     <div>
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Chamados Abertos</span>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Chamados Abertos</span>
                         <h4 class="text-3xl font-black text-rose-600 mt-1">${abertos}</h4>
-                        <span class="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 mt-2 bg-rose-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-triangle-exclamation"></i> Requer atenção</span>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl shadow-inner">
+                    <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl">
                         <i class="fa-solid fa-ticket"></i>
                     </div>
                 </div>
             </div>
-
-            <div class="painel relative overflow-hidden bg-white rounded-2xl p-5 shadow-sm border border-slate-100 transition-all hover:shadow-md">
-                <div class="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-amber-500 opacity-10 pointer-events-none"></div>
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
                 <div class="flex items-center justify-between">
                     <div>
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Em Manutenção</span>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Em Manutenção</span>
                         <h4 class="text-3xl font-black text-amber-600 mt-1">${manutencao}</h4>
-                        <span class="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 mt-2 bg-amber-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-screwdriver-wrench"></i> Em reparo</span>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl shadow-inner">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
                         <i class="fa-solid fa-gears"></i>
                     </div>
                 </div>
             </div>
-
-            <div class="painel relative overflow-hidden bg-white rounded-2xl p-5 shadow-sm border border-slate-100 transition-all hover:shadow-md">
-                <div class="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-emerald-500 opacity-10 pointer-events-none"></div>
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
                 <div class="flex items-center justify-between">
                     <div>
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Taxa de Resolução</span>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Taxa de Resolução</span>
                         <h4 class="text-3xl font-black text-emerald-600 mt-1">${taxaResolucao}%</h4>
-                        <span class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 mt-2 bg-emerald-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-circle-check"></i> Eficiência geral</span>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shadow-inner">
+                    <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
                         <i class="fa-solid fa-chart-pie"></i>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            <div class="lg:col-span-2 painel bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                <div class="flex justify-between items-center mb-6">
-                    <div>
-                        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
-                            <i class="fa-solid fa-chart-column" style="color: var(--cor-principal);"></i> Fluxo Mensal de Chamados
-                        </h3>
-                        <p class="text-xs text-slate-400 mt-0.5">Volume de ocorrências registradas ao longo dos meses do ano</p>
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 w-full">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-chart-column" style="color: var(--cor-principal);"></i> 
+                    Fluxo de Chamados
+                </h3>
+                
+                <div class="flex items-center gap-2 flex-wrap">
+                    <div class="bg-slate-100 p-1 rounded-xl flex gap-1">
+                        <button onclick="alterarFiltroGrafico('dia')" id="btn-filtro-dia" class="px-3 py-1 rounded-lg text-xs font-bold transition-all ${filtroPeriodoAtual === 'dia' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-900'}">Dia</button>
+                        <button onclick="alterarFiltroGrafico('semana')" id="btn-filtro-semana" class="px-3 py-1 rounded-lg text-xs font-bold transition-all ${filtroPeriodoAtual === 'semana' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-900'}">Semana</button>
+                        <button onclick="alterarFiltroGrafico('mes')" id="btn-filtro-mes" class="px-3 py-1 rounded-lg text-xs font-bold transition-all ${filtroPeriodoAtual === 'mes' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-900'}">Mês</button>
                     </div>
-                </div>
-                <div class="relative h-72"><canvas id="graficoMes"></canvas></div>
-            </div>
 
-            <div class="painel bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
-                <div>
-                    <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2 mb-1">
-                        <i class="fa-solid fa-circle-nodes text-emerald-600"></i> Atalhos Rápidos
-                    </h3>
-                    <p class="text-xs text-slate-400 mb-5">Ações frequentes no sistema</p>
-                    
-                    <div class="space-y-3">
-                        <button onclick="navegarPara('chamados')" class="w-full flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition text-left group shadow-sm">
-                            <div class="flex items-center gap-3">
-                                <div class="w-9 h-9 rounded-lg bg-slate-50 shadow-sm flex items-center justify-center text-slate-700 group-hover:text-indigo-600 transition"><i class="fa-solid fa-ticket text-xs"></i></div>
-                                <div>
-                                    <p class="text-xs font-bold text-slate-800">Novo Chamado</p>
-                                    <p class="text-[11px] text-slate-400">Abrir ocorrência de TI</p>
-                                </div>
-                            </div>
-                            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
-                        </button>
-
-                        <button onclick="navegarPara('equipamentos')" class="w-full flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition text-left group shadow-sm">
-                            <div class="flex items-center gap-3">
-                                <div class="w-9 h-9 rounded-lg bg-slate-50 shadow-sm flex items-center justify-center text-slate-700 group-hover:text-indigo-600 transition"><i class="fa-solid fa-laptop text-xs"></i></div>
-                                <div>
-                                    <p class="text-xs font-bold text-slate-800">Equipamentos</p>
-                                    <p class="text-[11px] text-slate-400">Gerenciar parque de ativos</p>
-                                </div>
-                            </div>
-                            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                    <span>Versão 2.5 Pro</span>
-                    <span class="text-emerald-600 font-semibold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Sistema Online</span>
+                    <button onclick="imprimirRelatorioPainel()" class="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition">
+                        <i class="fa-solid fa-print"></i> Imprimir Relatório
+                    </button>
                 </div>
             </div>
+            <div class="relative h-72"><canvas id="graficoMes"></canvas></div>
         </div>
     `;
     renderizarGraficos();
 }
 
-function renderizarGraficos() {
-    const mesesNomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    const totaisMeses = new Array(12).fill(0);
-    chamados.forEach(c => {
-        if (c.data) {
-            const partes = c.data.split(' ')[0].split('/');
-            if (partes.length === 3) {
-                const mesIdx = parseInt(partes[1], 10) - 1;
-                if (mesIdx >= 0 && mesIdx < 12) totaisMeses[mesIdx]++;
-            }
+function alterarFiltroGrafico(tipo) {
+    filtroPeriodoAtual = tipo;
+    ['dia', 'semana', 'mes'].forEach(p => {
+        const btn = document.getElementById(`btn-filtro-${p}`);
+        if (btn) {
+            btn.className = `px-3 py-1 rounded-lg text-xs font-bold transition-all ${p === tipo ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-900'}`;
         }
     });
+    renderizarGraficos();
+}
+
+function renderizarGraficos() {
+    let labels = [];
+    let dados = [];
+
+    if (filtroPeriodoAtual === 'dia') {
+        labels = ['08h', '10h', '12h', '14h', '16h', '18h'];
+        dados = new Array(6).fill(0);
+        chamados.forEach(c => {
+            if (c.data) {
+                const horaStr = c.data.split(' ')[1];
+                if (horaStr) {
+                    const hora = parseInt(horaStr.split(':')[0], 10);
+                    if (hora >= 8 && hora < 10) dados[0]++;
+                    else if (hora >= 10 && hora < 12) dados[1]++;
+                    else if (hora >= 12 && hora < 14) dados[2]++;
+                    else if (hora >= 14 && hora < 16) dados[3]++;
+                    else if (hora >= 16 && hora < 18) dados[4]++;
+                    else if (hora >= 18) dados[5]++;
+                }
+            }
+        });
+    } else if (filtroPeriodoAtual === 'semana') {
+        labels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        dados = new Array(7).fill(0);
+        chamados.forEach(c => {
+            if (c.data) {
+                const partes = c.data.split(' ')[0].split('/');
+                if (partes.length === 3) {
+                    const dataObj = new Date(partes[2], partes[1] - 1, partes[0]);
+                    const diaSemana = dataObj.getDay();
+                    if (!isNaN(diaSemana)) dados[diaSemana]++;
+                }
+            }
+        });
+    } else {
+        labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        dados = new Array(12).fill(0);
+        chamados.forEach(c => {
+            if (c.data) {
+                const partes = c.data.split(' ')[0].split('/');
+                if (partes.length === 3) {
+                    const mesIdx = parseInt(partes[1], 10) - 1;
+                    if (mesIdx >= 0 && mesIdx < 12) dados[mesIdx]++;
+                }
+            }
+        });
+    }
+
     const corAtual = DB.get('aparencia', {}).corPrincipal || CONFIG.corPrincipalPadrao;
     const ctxMes = document.getElementById('graficoMes');
+
     if (ctxMes) {
-        new Chart(ctxMes, {
+        if (meuGrafico) meuGrafico.destroy();
+
+        meuGrafico = new Chart(ctxMes, {
             type: 'bar',
-            data: { labels: mesesNomes, datasets: [{ label: 'Chamados', data: totaisMeses, backgroundColor: corAtual, borderRadius: 6 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { precision: 0 } }, x: { grid: { display: false } } } }
+            data: { 
+                labels: labels, 
+                datasets: [{ 
+                    label: 'Chamados', 
+                    data: dados, 
+                    backgroundColor: corAtual, 
+                    borderRadius: 6 
+                }] 
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { legend: { display: false } }, 
+                scales: { 
+                    y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { precision: 0 } }, 
+                    x: { grid: { display: false } } 
+                } 
+            }
         });
     }
 }
 
-// MÓDULO DE EQUIPAMENTOS
+function imprimirRelatorioPainel() {
+    const abertos = chamados.filter(c => c.status === 'Aberto').length;
+    const ativos = equipamentos.filter(e => e.status === 'Ativo').length;
+    const manutencao = equipamentos.filter(e => e.status === 'Manutenção').length;
+    const totalChamados = chamados.length;
+    const taxaResolucao = totalChamados > 0 ? (((totalChamados - abertos) / totalChamados) * 100).toFixed(1) : 100;
+    
+    let periodoTexto = filtroPeriodoAtual === 'dia' ? 'Diário' : (filtroPeriodoAtual === 'semana' ? 'Semanal' : 'Mensal');
+
+    const htmlConteudo = `
+        <div style="margin-bottom: 20px;">
+            <h3>Resumo Geral do Parque e Atendimentos</h3>
+            <table style="width:100%; border-collapse: collapse; margin-bottom: 20px;">
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #cbd5e1;"><b>Equipamentos Ativos:</b> ${ativos}</td>
+                    <td style="padding: 10px; border: 1px solid #cbd5e1;"><b>Chamados Abertos:</b> ${abertos}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #cbd5e1;"><b>Em Manutenção:</b> ${manutencao}</td>
+                    <td style="padding: 10px; border: 1px solid #cbd5e1;"><b>Taxa de Resolução:</b> ${taxaResolucao}%</td>
+                </tr>
+            </table>
+
+            <h3>Detalhamento dos Chamados — Visão ${periodoTexto}</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Solicitante</th>
+                        <th>Categoria / Subcategoria</th>
+                        <th>Status</th>
+                        <th>Prioridade</th>
+                        <th>Data Abertura</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${chamados.length > 0 ? chamados.map(c => `
+                        <tr>
+                            <td>${c.solicitante || 'N/A'}</td>
+                            <td>${c.categoria || '-'} / ${c.subcategoria || '-'}</td>
+                            <td><b>${c.status}</b></td>
+                            <td>${c.prioridade || 'Normal'}</td>
+                            <td>${c.data}</td>
+                        </tr>
+                    `).join('') : '<tr><td colspan="5" style="text-align:center;">Nenhum chamado registrado.</td></tr>'}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    dispararImpressao(`Dashboard & Fluxo de Chamados (${filtroPeriodoAtual.toUpperCase()})`, htmlConteudo);
+}
+
+// 2. EQUIPAMENTOS
 function carregarEquipamentos(container) {
     container.innerHTML = `
-        <div class="painel mb-6 bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm">
-                <i class="fa-solid fa-desktop" style="color: var(--cor-principal);"></i> Cadastrar Novo Equipamento
-            </h3>
-            <form id="form-equipamento" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Patrimônio</label>
-                        <input type="text" name="patrimonio" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs" placeholder="Ex: PAT-005" required>
-                    </div>
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Tipo</label>
-                        <select name="tipo" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white">
-                            <option value="Notebook">Notebook</option>
-                            <option value="Computador">Computador</option>
-                            <option value="Impressora">Impressora</option>
-                            <option value="Switch/Rede">Switch/Rede</option>
-                            <option value="Outros">Outros</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Marca / Modelo</label>
-                        <input type="text" name="marcaModelo" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs" placeholder="Ex: Dell Inspiron" required>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Setor</label>
-                        <input type="text" name="setor" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs" placeholder="Ex: Financeiro" required>
-                    </div>
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Responsável</label>
-                        <input type="text" name="responsavel" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs" placeholder="Nome do colaborador" required>
-                    </div>
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Status</label>
-                        <select name="status" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white">
-                            <option value="Ativo">Ativo</option>
-                            <option value="Manutenção">Manutenção</option>
-                            <option value="Baixado">Baixado</option>
-                        </select>
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primario text-xs px-4 py-2.5 rounded-xl font-semibold"><i class="fa-solid fa-plus"></i> Salvar Equipamento</button>
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 mb-6 w-full">
+            <h3 class="font-bold text-slate-900 text-sm mb-4">Cadastrar Novo Equipamento</h3>
+            <form id="form-equipamento" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <input type="text" id="eq-patrimonio" placeholder="Patrimônio (Ex: PAT-100)" required class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none text-slate-900">
+                <input type="text" id="eq-tipo" placeholder="Tipo (Ex: Notebook, Impressora)" required class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none text-slate-900">
+                <input type="text" id="eq-modelo" placeholder="Marca e Modelo" required class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none text-slate-900">
+                <input type="text" id="eq-setor" placeholder="Setor Responsável" required class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none text-slate-900">
+                <input type="text" id="eq-resp" placeholder="Nome do Responsável" required class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none text-slate-900">
+                <select id="eq-status" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none text-slate-900">
+                    <option value="Ativo">Ativo</option>
+                    <option value="Manutenção">Manutenção</option>
+                    <option value="Inativo">Inativo</option>
+                </select>
+                <button type="submit" class="sm:col-span-3 py-3 rounded-xl text-white font-bold text-xs shadow-sm transition" style="background-color: var(--cor-principal);">Cadastrar Equipamento</button>
             </form>
         </div>
-
-        <div class="painel bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h3 class="font-bold text-slate-800 mb-4 text-sm">Parque de Ativos Cadastrados</h3>
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-slate-900 text-sm">Parque de Ativos Cadastrados</h3>
+                <button onclick="imprimirRelatorioEquipamentos()" class="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-print"></i> Imprimir Relatório
+                </button>
+            </div>
             <div class="overflow-x-auto">
-                <table class="tabela-moderna w-full text-left border-collapse">
-                    <thead>
-                        <tr class="border-b border-slate-100 text-xs text-slate-500">
-                            <th class="p-3">Patrimônio</th>
-                            <th class="p-3">Tipo / Modelo</th>
-                            <th class="p-3">Setor</th>
-                            <th class="p-3">Responsável</th>
-                            <th class="p-3">Status</th>
-                            <th class="p-3 text-right">Ações</th>
-                        </tr>
+                <table id="tabela-rel-equipamentos" class="w-full text-left text-xs text-slate-700">
+                    <thead class="bg-slate-50 uppercase text-[10px] text-slate-500">
+                        <tr><th class="p-3">Patrimônio</th><th class="p-3">Tipo / Modelo</th><th class="p-3">Setor</th><th class="p-3">Responsável</th><th class="p-3">Status</th><th class="p-3 text-right nao-imprimir">Ações</th></tr>
                     </thead>
-                    <tbody class="text-xs">
-                        ${equipamentos.map(eq => `
-                            <tr class="border-b border-slate-50 hover:bg-slate-50">
-                                <td class="p-3 font-bold">${eq.patrimonio}</td>
-                                <td class="p-3">${eq.tipo} - ${eq.marcaModelo}</td>
-                                <td class="p-3">${eq.setor}</td>
-                                <td class="p-3">${eq.responsavel}</td>
-                                <td class="p-3">
-                                    <span class="px-2 py-1 rounded-full text-[10px] font-bold ${eq.status === 'Ativo' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}">
-                                        ${eq.status}
-                                    </span>
-                                </td>
-                                <td class="p-3 text-right">
-                                    <button onclick="removerEquipamento(${eq.id})" class="text-rose-600 hover:text-rose-800 font-semibold px-2 py-1 bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i> Excluir</button>
+                    <tbody class="divide-y divide-slate-100">
+                        ${equipamentos.map(e => `
+                            <tr>
+                                <td class="p-3 font-bold text-slate-900">${e.patrimonio}</td>
+                                <td class="p-3">${e.tipo} - ${e.marcaModelo}</td>
+                                <td class="p-3">${e.setor}</td>
+                                <td class="p-3">${e.responsavel}</td>
+                                <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${e.status === 'Ativo' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}">${e.status}</span></td>
+                                <td class="p-3 text-right nao-imprimir">
+                                    <button onclick="removerEquipamento(${e.id})" class="text-slate-400 hover:text-rose-600"><i class="fa-solid fa-trash"></i></button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -576,111 +725,90 @@ function carregarEquipamentos(container) {
             </div>
         </div>
     `;
-
-    container.querySelector('#form-equipamento').addEventListener('submit', e => {
+    document.getElementById('form-equipamento').addEventListener('submit', (e) => {
         e.preventDefault();
-        const data = Object.fromEntries(new FormData(e.target));
-        const novo = {
+        equipamentos.push({
             id: DB.proximoId(equipamentos),
-            ...data
-        };
-        equipamentos.push(novo);
+            patrimonio: document.getElementById('eq-patrimonio').value,
+            tipo: document.getElementById('eq-tipo').value,
+            marcaModelo: document.getElementById('eq-modelo').value,
+            setor: document.getElementById('eq-setor').value,
+            responsavel: document.getElementById('eq-resp').value,
+            status: document.getElementById('eq-status').value
+        });
         salvarTudo();
-        historicoAlteracoes.unshift({ data: new Date().toLocaleString('pt-BR'), acao: `Equipamento cadastrado: ${novo.patrimonio}`, usuario: usuarioLogado.usuario });
-        DB.set('historico', historicoAlteracoes);
-        alert('Equipamento cadastrado com sucesso!');
         carregarEquipamentos(container);
     });
 }
 
-function removerEquipamento(id) {
-    if (confirm('Deseja excluir este equipamento?')) {
-        equipamentos = equipamentos.filter(e => e.id !== id);
-        salvarTudo();
-        navegarPara('equipamentos');
-    }
+function imprimirRelatorioEquipamentos() {
+    const htmlTabela = `
+        <table>
+            <thead>
+                <tr><th>Patrimônio</th><th>Tipo / Modelo</th><th>Setor</th><th>Responsável</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                ${equipamentos.map(e => `
+                    <tr>
+                        <td><b>${e.patrimonio}</b></td>
+                        <td>${e.tipo} - ${e.marcaModelo}</td>
+                        <td>${e.setor}</td>
+                        <td>${e.responsavel}</td>
+                        <td>${e.status}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+    dispararImpressao('Equipamentos e Ativos', htmlTabela);
 }
 
-// MÓDULO CENTRAL DE CHAMADOS
-function carregarChamados(container) {
-    const ehAdm = usuarioLogado.perfil === 'ADM';
+function removerEquipamento(id) {
+    if (!validarPermissaoAdmin()) return;
+    
+    equipamentos = equipamentos.filter(e => e.id !== id);
+    salvarTudo();
+    carregarEquipamentos(document.getElementById('conteudo-pagina'));
+}
 
+// 3. CENTRAL DE CHAMADOS
+function carregarChamados(container) {
     container.innerHTML = `
-        <div class="painel mb-6 bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm">
-                <i class="fa-solid fa-ticket" style="color: var(--cor-principal);"></i> Abrir Novo Chamado de Suporte
-            </h3>
-            <form id="form-chamado" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Categoria</label>
-                        <select name="categoria" id="select-cat-chamado" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white" onchange="atualizarSubcategoriasChamado(this.value)" required>
-                            <option value="">Selecione...</option>
-                            ${categoriasProblema.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Subcategoria</label>
-                        <select name="subcategoria" id="select-subcat-chamado" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white" required>
-                            <option value="">Selecione a categoria primeiro</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Prioridade</label>
-                    <select name="prioridade" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white">
-                        <option value="Baixa">Baixa</option>
-                        <option value="Média" selected>Média</option>
-                        <option value="Alta">Alta</option>
-                        <option value="Crítica">Crítica</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Descrição do Problema</label>
-                    <textarea name="descricao" rows="3" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs" placeholder="Descreva detalhadamente o ocorrido..." required></textarea>
-                </div>
-                <button type="submit" class="btn btn-primario text-xs px-4 py-2.5 rounded-xl font-semibold"><i class="fa-solid fa-paper-plane"></i> Enviar Chamado</button>
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 mb-6 w-full">
+            <h3 class="font-bold text-slate-900 text-sm mb-4">Abrir Novo Chamado de Suporte</h3>
+            <form id="form-chamado" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <select id="ch-categoria" required class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900">
+                    <option value="">Selecione a Categoria</option>
+                    ${categoriasProblema.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('')}
+                </select>
+                <select id="ch-prioridade" required class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900">
+                    <option value="Baixa">Prioridade Baixa</option>
+                    <option value="Média" selected>Prioridade Média</option>
+                    <option value="Alta">Prioridade Alta</option>
+                </select>
+                <textarea id="ch-descricao" placeholder="Descreva detalhadamente o problema..." required class="sm:col-span-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900 h-24"></textarea>
+                <button type="submit" class="sm:col-span-2 py-3 rounded-xl text-white font-bold text-xs shadow-sm transition" style="background-color: var(--cor-principal);">Registrar Chamado</button>
             </form>
         </div>
-
-        <div class="painel bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h3 class="font-bold text-slate-800 mb-4 text-sm">Histórico de Chamados Geral</h3>
+        
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 w-full">
+            <h3 class="font-bold text-slate-900 text-sm mb-4">Todos os Chamados do Sistema</h3>
             <div class="overflow-x-auto">
-                <table class="tabela-moderna w-full text-left border-collapse">
-                    <thead>
-                        <tr class="border-b border-slate-100 text-xs text-slate-500">
-                            <th class="p-3">ID</th>
-                            <th class="p-3">Solicitante</th>
-                            <th class="p-3">Categoria / Sub</th>
-                            <th class="p-3">Prioridade</th>
-                            <th class="p-3">Status</th>
-                            <th class="p-3 text-right">Ações / Mudar Status</th>
-                        </tr>
+                <table class="w-full text-left text-xs text-slate-700">
+                    <thead class="bg-slate-50 uppercase text-[10px] text-slate-500">
+                        <tr><th class="p-3">#ID</th><th class="p-3">Solicitante</th><th class="p-3">Categoria</th><th class="p-3">Descrição</th><th class="p-3">Prioridade</th><th class="p-3">Status</th><th class="p-3 text-right">Ação</th></tr>
                     </thead>
-                    <tbody class="text-xs">
-                        ${chamados.map(ch => `
-                            <tr class="border-b border-slate-50 hover:bg-slate-50">
-                                <td class="p-3 font-bold">#${ch.id}</td>
-                                <td class="p-3">${ch.solicitante}</td>
-                                <td class="p-3">${ch.categoria} <br><span class="text-[10px] text-slate-400">${ch.subcategoria || ''}</span></td>
-                                <td class="p-3"><span class="font-bold text-slate-700">${ch.prioridade}</span></td>
-                                <td class="p-3">
-                                    <span class="px-2 py-1 rounded-full text-[10px] font-bold ${ch.status === 'Aberto' ? 'bg-rose-50 text-rose-600' : (ch.status === 'Resolvido' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600')}">
-                                        ${ch.status}
-                                    </span>
-                                </td>
-                                <td class="p-3 text-right space-x-2">
-                                    ${ehAdm ? `
-                                        <select onchange="alterarStatusChamado(${ch.id}, this.value)" class="campo p-1 text-xs rounded-lg border border-slate-200 bg-white">
-                                            <option value="Aberto" ${ch.status === 'Aberto' ? 'selected' : ''}>Aberto</option>
-                                            <option value="Em Andamento" ${ch.status === 'Em Andamento' ? 'selected' : ''}>Em Andamento</option>
-                                            <option value="Resolvido" ${ch.status === 'Resolvido' ? 'selected' : ''}>Resolvido</option>
-                                        </select>
-                                        ${ch.status !== 'Resolvido' ? `<button onclick="alterarStatusChamado(${ch.id}, 'Resolvido'); navegarPara('chamados');" class="text-emerald-700 hover:text-emerald-900 font-semibold px-2 py-1 bg-emerald-50 rounded-lg text-xs" title="Concluir Chamado"><i class="fa-solid fa-check"></i> Concluir</button>` : ''}
-                                        <button onclick="removerChamado(${ch.id})" class="text-rose-600 hover:text-rose-800 font-semibold px-2 py-1 bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i></button>
-                                    ` : `
-                                        <span class="text-slate-400 italic text-[11px]">Apenas visualização</span>
-                                    `}
+                    <tbody class="divide-y divide-slate-100">
+                        ${chamados.map(c => `
+                            <tr>
+                                <td class="p-3 font-bold">#${c.id}</td>
+                                <td class="p-3">${c.solicitante}</td>
+                                <td class="p-3">${c.categoria}</td>
+                                <td class="p-3 truncate max-w-xs">${c.descricao}</td>
+                                <td class="p-3 font-semibold">${c.prioridade}</td>
+                                <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${c.status === 'Aberto' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}">${c.status}</span></td>
+                                <td class="p-3 text-right">
+                                    ${c.status === 'Aberto' ? `<button onclick="fecharChamado(${c.id})" class="text-xs bg-emerald-600 text-white px-2.5 py-1 rounded-lg font-bold">Concluir</button>` : '<span class="text-slate-400">Finalizado</span>'}
                                 </td>
                             </tr>
                         `).join('')}
@@ -690,86 +818,55 @@ function carregarChamados(container) {
         </div>
     `;
 
-    container.querySelector('#form-chamado').addEventListener('submit', e => {
+    document.getElementById('form-chamado').addEventListener('submit', (e) => {
         e.preventDefault();
-        const data = Object.fromEntries(new FormData(e.target));
-        const novo = {
+        chamados.unshift({
             id: DB.proximoId(chamados),
             solicitante: usuarioLogado.nome,
+            categoria: document.getElementById('ch-categoria').value,
+            subcategoria: 'Geral',
+            descricao: document.getElementById('ch-descricao').value,
+            prioridade: document.getElementById('ch-prioridade').value,
             status: 'Aberto',
-            data: new Date().toLocaleString('pt-BR'),
-            ...data
-        };
-        chamados.unshift(novo);
+            data: new Date().toLocaleString('pt-BR')
+        });
         salvarTudo();
-        alert('Chamado aberto com sucesso!');
         carregarChamados(container);
     });
 }
 
-function atualizarSubcategoriasChamado(nomeCat) {
-    const selectSub = document.getElementById('select-subcat-chamado');
-    if (!selectSub) return;
-    const cat = categoriasProblema.find(c => c.nome === nomeCat);
-    if (!cat || !cat.subcategorias || cat.subcategorias.length === 0) {
-        selectSub.innerHTML = `<option value="">Nenhuma subcategoria disponível</option>`;
-        return;
-    }
-    selectSub.innerHTML = cat.subcategorias.map(s => `<option value="${s}">${s}</option>`).join('');
-}
+function fecharChamado(id) {
+    if (!validarPermissaoAdmin()) return;
 
-function alterarStatusChamado(id, novoStatus) {
-    if (usuarioLogado.perfil !== 'ADM') {
-        alert('Apenas administradores podem modificar chamados.');
-        return;
-    }
-    const ch = chamados.find(c => c.id === id);
-    if (ch) {
-        ch.status = novoStatus;
+    const chamado = chamados.find(c => c.id === id);
+    if (chamado) {
+        chamado.status = 'Concluído';
         salvarTudo();
-        alert(`Status do chamado #${ch.id} atualizado para ${novoStatus}`);
+        carregarChamados(document.getElementById('conteudo-pagina'));
     }
 }
 
-function removerChamado(id) {
-    if (usuarioLogado.perfil !== 'ADM') {
-        alert('Apenas administradores podem excluir chamados.');
-        return;
-    }
-    if (confirm('Deseja excluir este chamado?')) {
-        chamados = chamados.filter(c => c.id !== id);
-        salvarTudo();
-        navegarPara('chamados');
-    }
-}
-
+// 4. MEUS CHAMADOS
 function carregarMeusChamados(container) {
     const meus = chamados.filter(c => c.solicitante === usuarioLogado.nome);
     container.innerHTML = `
-        <div class="painel bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h3 class="font-bold text-slate-800 mb-4 text-sm">Meus Chamados Abertos (<span style="color: var(--cor-principal);">${meus.length}</span>)</h3>
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 w-full">
+            <h3 class="font-bold text-slate-900 text-sm mb-4">Meus Chamados Solicitados</h3>
             <div class="overflow-x-auto">
-                <table class="tabela-moderna w-full text-left border-collapse">
-                    <thead>
-                        <tr class="border-b border-slate-100 text-xs text-slate-500">
-                            <th class="p-3">ID</th>
-                            <th class="p-3">Categoria</th>
-                            <th class="p-3">Descrição</th>
-                            <th class="p-3">Prioridade</th>
-                            <th class="p-3">Status</th>
-                        </tr>
+                <table class="w-full text-left text-xs text-slate-700">
+                    <thead class="bg-slate-50 uppercase text-[10px] text-slate-500">
+                        <tr><th class="p-3">#ID</th><th class="p-3">Categoria</th><th class="p-3">Descrição</th><th class="p-3">Data</th><th class="p-3">Status</th></tr>
                     </thead>
-                    <tbody class="text-xs">
-                        ${meus.length === 0 ? `<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum chamado encontrado em seu nome.</td></tr>` : 
-                        meus.map(ch => `
-                            <tr class="border-b border-slate-50">
-                                <td class="p-3 font-bold">#${ch.id}</td>
-                                <td class="p-3">${ch.categoria}</td>
-                                <td class="p-3">${ch.descricao}</td>
-                                <td class="p-3">${ch.prioridade}</td>
-                                <td class="p-3"><span class="px-2 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">${ch.status}</span></td>
+                    <tbody class="divide-y divide-slate-100">
+                        ${meus.length > 0 ? meus.map(c => `
+                            <tr>
+                                <td class="p-3 font-bold">#${c.id}</td>
+                                <td class="p-3">${c.categoria}</td>
+                                <td class="p-3">${c.descricao}</td>
+                                <td class="p-3">${c.data}</td>
+                                <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${c.status === 'Aberto' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}">${c.status}</span></td>
                             </tr>
-                        `).join('')}
+                        `).join('') : '<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum chamado aberto por você.</td></tr>'}
                     </tbody>
                 </table>
             </div>
@@ -777,353 +874,193 @@ function carregarMeusChamados(container) {
     `;
 }
 
-function carregarSetores(container) {
-    const ehAdm = usuarioLogado.perfil === 'ADM';
-
-    container.innerHTML = `
-        ${ehAdm ? `
-        <div class="painel mb-6 bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm">
-                <i class="fa-solid fa-building-shield" style="color: var(--cor-principal);"></i> Cadastrar Novo Setor e Alçada
-            </h3>
-            <form id="form-novo-setor" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Nome do Setor</label>
-                        <input type="text" name="nomeSetor" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs" placeholder="Ex: Logística" required>
-                    </div>
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Tipo de Liberação / Descrição</label>
-                        <input type="text" name="tipoLiberacao" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs" placeholder="Ex: Gestão de Estoque e Entregas" required>
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primario text-xs px-4 py-2.5 rounded-xl font-semibold"><i class="fa-solid fa-plus"></i> Salvar Setor</button>
-            </form>
-        </div>
-        ` : ''}
-
-        <div class="painel bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h3 class="font-bold text-slate-800 mb-4 text-sm">Gerenciamento de Setores e Liberações Cadastradas</h3>
-            <div class="space-y-3">
-                ${setoresLiberacoes.map(s => `
-                    <div class="p-4 rounded-xl border border-slate-100 bg-slate-50 flex justify-between items-center text-xs">
-                        <div>
-                            <p class="font-bold text-slate-800">${s.nome}</p>
-                            <p class="text-slate-500">${s.tipoLiberacao}</p>
-                        </div>
-                        ${ehAdm ? `
-                            <button onclick="removerSetor(${s.id})" class="text-rose-600 hover:text-rose-800 font-semibold px-2.5 py-1 bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i> Excluir</button>
-                        ` : ''}
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-
-    if (ehAdm) {
-        container.querySelector('#form-novo-setor').addEventListener('submit', e => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const novoSetor = {
-                id: DB.proximoId(setoresLiberacoes),
-                nome: formData.get('nomeSetor'),
-                tipoLiberacao: formData.get('tipoLiberacao')
-            };
-            setoresLiberacoes.push(novoSetor);
-            salvarTudo();
-            historicoAlteracoes.unshift({ data: new Date().toLocaleString('pt-BR'), acao: `Setor criado: ${novoSetor.nome}`, usuario: usuarioLogado.usuario });
-            DB.set('historico', historicoAlteracoes);
-            alert('Setor cadastrado com sucesso!');
-            carregarSetores(container);
-        });
-    }
-}
-
-function removerSetor(id) {
-    if (usuarioLogado.perfil !== 'ADM') return;
-    if (confirm('Deseja realmente excluir este setor?')) {
-        setoresLiberacoes = setoresLiberacoes.filter(s => s.id !== id);
-        salvarTudo();
-        navegarPara('setores');
-    }
-}
-
-function carregarHistorico(container) {
-    if (usuarioLogado.perfil !== 'ADM') return;
-    container.innerHTML = `
-        <div class="painel bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h3 class="font-bold text-slate-800 mb-4 text-sm">Histórico e Auditoria Geral</h3>
-            <div class="space-y-2">
-                ${historicoAlteracoes.length === 0 ? `<p class="text-xs text-slate-400">Nenhuma alteração registrada ainda.</p>` :
-                historicoAlteracoes.map(h => `
-                    <div class="p-3 rounded-xl border border-slate-100 bg-slate-50 text-xs flex justify-between">
-                        <span><strong>${h.usuario}</strong>: ${h.acao}</span>
-                        <span class="text-slate-400">${h.data}</span>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-}
-
-function carregarAparencia(container) {
-    const aparencia = DB.get('aparencia', {
-        opacidade: CONFIG.opacidadeFundo,
-        desfoque: CONFIG.desfoqueFundo,
-        corPrincipal: CONFIG.corPrincipalPadrao,
-        corTexto: CONFIG.corTextoPadrao,
-        fonteTexto: CONFIG.fontePadrao
-    });
-
-    container.innerHTML = `
-        <div class="painel mb-6 bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm">
-                <i class="fa-solid fa-palette" style="color: var(--cor-principal);"></i> Configurações Visuais e Globais
-            </h3>
-            <form id="form-aparencia" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Cor Principal</label>
-                        <input type="color" name="corPrincipal" class="campo h-10 p-1 cursor-pointer w-full rounded-xl border border-slate-200" value="${aparencia.corPrincipal}">
-                    </div>
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Cor do Texto Padrão</label>
-                        <input type="color" name="corTexto" class="campo h-10 p-1 cursor-pointer w-full rounded-xl border border-slate-200" value="${aparencia.corTexto || CONFIG.corTextoPadrao}">
-                    </div>
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Fonte do Sistema</label>
-                        <select name="fonteTexto" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white text-slate-700">
-                            <option value="Inter, sans-serif" ${aparencia.fonteTexto.includes('Inter') ? 'selected' : ''}>Inter (Padrão Moderna)</option>
-                            <option value="Roboto, sans-serif" ${aparencia.fonteTexto.includes('Roboto') ? 'selected' : ''}>Roboto</option>
-                            <option value="Segoe UI, sans-serif" ${aparencia.fonteTexto.includes('Segoe UI') ? 'selected' : ''}>Segoe UI</option>
-                            <option value="Poppins, sans-serif" ${aparencia.fonteTexto.includes('Poppins') ? 'selected' : ''}>Poppins</option>
-                            <option value="Montserrat, sans-serif" ${aparencia.fonteTexto.includes('Montserrat') ? 'selected' : ''}>Montserrat</option>
-                            <option value="Open Sans, sans-serif" ${aparencia.fonteTexto.includes('Open Sans') ? 'selected' : ''}>Open Sans</option>
-                            <option value="Lato, sans-serif" ${aparencia.fonteTexto.includes('Lato') ? 'selected' : ''}>Lato</option>
-                            <option value="Courier New, monospace" ${aparencia.fonteTexto.includes('Courier New') ? 'selected' : ''}>Courier New (Mono)</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Logotipo do Sistema (Arquivo de Imagem)</label>
-                        <input type="file" id="input-logo" accept="image/*" class="campo w-full p-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-700 cursor-pointer">
-                    </div>
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Imagem de Fundo do Sistema (Arquivo de Imagem)</label>
-                        <input type="file" id="input-fundo" accept="image/*" class="campo w-full p-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-700 cursor-pointer">
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Opacidade do Fundo (${aparencia.opacidade}%)</label>
-                        <input type="range" name="opacidade" min="0" max="100" class="w-full accent-indigo-600" value="${aparencia.opacidade}">
-                    </div>
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Desfoque do Fundo (${aparencia.desfoque}px)</label>
-                        <input type="range" name="desfoque" min="0" max="20" class="w-full accent-indigo-600" value="${aparencia.desfoque}">
-                    </div>
-                </div>
-                <button type="submit" class="btn bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 font-bold px-4 py-2.5 rounded-xl text-xs shadow-sm flex items-center gap-2"><i class="fa-solid fa-floppy-disk text-emerald-600"></i> Salvar Alterações</button>
-            </form>
-        </div>
-    `;
-
-    container.querySelector('#form-aparencia').addEventListener('submit', async e => {
-        e.preventDefault();
-        const data = Object.fromEntries(new FormData(e.target));
-        
-        const arquivoLogo = container.querySelector('#input-logo').files[0];
-        const arquivoFundo = container.querySelector('#input-fundo').files[0];
-        
-        let logoBase64 = null;
-        let fundoBase64 = null;
-
-        if (arquivoLogo) logoBase64 = await Aparencia.lerImagem(arquivoLogo);
-        if (arquivoFundo) fundoBase64 = await Aparencia.lerImagem(arquivoFundo);
-
-        Aparencia.salvar(logoBase64, fundoBase64, Number(data.opacidade), Number(data.desfoque), data.corPrincipal, data.corTexto, data.fonteTexto);
-        alert('Configurações visuais aplicadas com sucesso!');
-        Aparencia.aplicar();
-        navegarPara('aparencia');
-    });
-}
-
-function carregarCategorias(container) {
-    if (usuarioLogado.perfil !== 'ADM') {
-        container.innerHTML = `<div class="painel bg-white rounded-2xl p-6 text-center text-rose-600 font-bold">Acesso restrito a Administradores.</div>`;
-        return;
-    }
-
-    container.innerHTML = `
-        <div class="painel mb-6 bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm">
-                <i class="fa-solid fa-tags" style="color: var(--cor-principal);"></i> Adicionar Nova Categoria de Problema
-            </h3>
-            <form id="form-nova-categoria" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Nome da Categoria</label>
-                        <input type="text" name="nomeCategoria" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs" placeholder="Ex: Segurança da Informação" required>
-                    </div>
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Subcategorias (separadas por vírgula)</label>
-                        <input type="text" name="subcategorias" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs" placeholder="Ex: Antivírus, Firewall, Senhas">
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primario text-xs px-4 py-2.5 rounded-xl"><i class="fa-solid fa-plus"></i> Cadastrar Categoria</button>
-            </form>
-        </div>
-
-        <div class="painel bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h3 class="font-bold text-slate-800 mb-4 text-sm">Categorias Existentes</h3>
-            <div class="overflow-x-auto">
-                <table class="tabela-moderna w-full text-left">
-                    <thead>
-                        <tr class="border-b border-slate-100 text-xs text-slate-500">
-                            <th class="p-3">ID</th>
-                            <th class="p-3">Categoria</th>
-                            <th class="p-3">Subcategorias</th>
-                            <th class="p-3 text-right">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody class="text-xs">
-                        ${categoriasProblema.map(cat => `
-                            <tr class="border-b border-slate-50">
-                                <td class="p-3">#${cat.id}</td>
-                                <td class="p-3 font-bold">${cat.nome}</td>
-                                <td class="p-3">${cat.subcategorias ? cat.subcategorias.join(', ') : 'Nenhuma'}</td>
-                                <td class="p-3 text-right">
-                                    <button onclick="removerCategoria(${cat.id})" class="text-rose-600 hover:text-rose-800 text-xs font-semibold px-2 py-1 bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i> Excluir</button>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    `;
-
-    container.querySelector('#form-nova-categoria').addEventListener('submit', e => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const nome = formData.get('nomeCategoria');
-        const subsStr = formData.get('subcategorias');
-        const subcategorias = subsStr ? subsStr.split(',').map(s => s.trim()).filter(Boolean) : [];
-
-        const novaCat = {
-            id: DB.proximoId(categoriasProblema),
-            nome,
-            subcategorias
-        };
-
-        categoriasProblema.push(novaCat);
-        salvarTudo();
-        historicoAlteracoes.unshift({ data: new Date().toLocaleString('pt-BR'), acao: `Categoria criada: ${nome}`, usuario: usuarioLogado.usuario });
-        DB.set('historico', historicoAlteracoes);
-        alert('Categoria adicionada com sucesso!');
-        carregarCategorias(container);
-    });
-}
-
-function removerCategoria(id) {
-    if (confirm('Deseja realmente excluir esta categoria?')) {
-        categoriasProblema = categoriasProblema.filter(c => c.id !== id);
-        salvarTudo();
-        alert('Categoria removida.');
-        navegarPara('categorias');
-    }
-}
-
-// MÓDULO DE GERENCIAMENTO DE USUÁRIOS E PERMISSÕES CUSTOMIZADAS
+// 5. GERENCIAR USUÁRIOS
 function carregarUsuarios(container) {
-    if (usuarioLogado.perfil !== 'ADM') return;
-
     container.innerHTML = `
-        <div class="painel mb-6 bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm">
-                <i class="fa-solid fa-user-plus" style="color: var(--cor-principal);"></i> Cadastrar Novo Usuário e Definir Permissões
-            </h3>
-            <form id="form-novo-usuario" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Nome de Usuário (Login)</label>
-                        <input type="text" name="usuario" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs" placeholder="Ex: carlos.silva" required>
-                    </div>
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Nome Completo</label>
-                        <input type="text" name="nome" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs" placeholder="Ex: Carlos Silva" required>
-                    </div>
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Senha Inicial</label>
-                        <input type="password" name="senha" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs" placeholder="******" required>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">E-mail</label>
-                        <input type="email" name="email" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs" placeholder="carlos@empresa.com.br">
-                    </div>
-                    <div>
-                        <label class="rotulo text-xs font-semibold text-slate-600 block mb-1">Perfil Principal</label>
-                        <select name="perfil" class="campo w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white">
-                            <option value="USER">Usuário Comum / Operacional</option>
-                            <option value="ADM">Administrador Geral</option>
-                        </select>
-                    </div>
-                </div>
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 mb-6 w-full">
+            <h3 class="font-bold text-slate-900 text-sm mb-4">Cadastrar Novo Usuário e Configurar Nível de Acesso</h3>
+            <form id="form-usuario" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <input type="text" id="us-nome" placeholder="Nome Completo" required class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900">
+                <input type="text" id="us-login" placeholder="Login de Usuário" required class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900">
+                <input type="email" id="us-email" placeholder="E-mail" required class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900">
+                <input type="password" id="us-senha" placeholder="Senha" required class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900">
+                
+                <select id="us-setor" required class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900">
+                    <option value="">Selecione o Setor</option>
+                    ${setoresLiberacoes.map(s => `<option value="${s.nome}">${s.nome}</option>`).join('')}
+                </select>
 
-                <div>
-                    <label class="rotulo text-xs font-semibold text-slate-700 block mb-2">Módulos Liberados para Acesso:</label>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <select id="us-perfil" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900">
+                    <option value="USER">Usuário Padrão</option>
+                    <option value="ADM">Administrador (Acesso Total)</option>
+                </select>
+
+                <div class="sm:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <label class="block text-xs font-bold text-slate-800 mb-2">Módulos Liberados para Acesso:</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         ${MODULOS_SISTEMA.map(m => `
                             <label class="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
-                                <input type="checkbox" name="permissoes" value="${m.id}" checked class="w-4 h-4 rounded text-indigo-600 accent-indigo-600">
+                                <input type="checkbox" name="us-permissoes" value="${m.id}" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
                                 ${m.nome}
                             </label>
                         `).join('')}
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-primario text-xs px-4 py-2.5 rounded-xl"><i class="fa-solid fa-user-check"></i> Criar Usuário com Permissões</button>
+                <button type="submit" class="sm:col-span-2 py-3 rounded-xl text-white font-bold text-xs shadow-sm transition" style="background-color: var(--cor-principal);">Cadastrar Usuário</button>
             </form>
         </div>
 
-        <div class="painel bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h3 class="font-bold text-slate-800 mb-4 text-sm">Usuários Cadastrados no Sistema</h3>
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 w-full">
+            <h3 class="font-bold text-slate-900 text-sm mb-4">Usuários e Níveis de Acesso Configurados</h3>
             <div class="overflow-x-auto">
-                <table class="tabela-moderna w-full text-left">
-                    <thead>
-                        <tr class="border-b border-slate-100 text-xs text-slate-500">
-                            <th class="p-3">Login / Nome</th>
-                            <th class="p-3">E-mail</th>
+                <table class="w-full text-left text-xs text-slate-700">
+                    <thead class="bg-slate-50 uppercase text-[10px] text-slate-500">
+                        <tr>
+                            <th class="p-3">Nome / Login</th>
+                            <th class="p-3">Setor</th>
+                            <th class="p-3">Liberação do Setor</th>
+                            <th class="p-3">Módulos Liberados</th>
                             <th class="p-3">Perfil</th>
-                            <th class="p-3">Acessos Liberados</th>
-                            <th class="p-3 text-right">Ações do ADM</th>
+                            <th class="p-3">Status</th>
+                            <th class="p-3 text-right">Ações</th>
                         </tr>
                     </thead>
-                    <tbody class="text-xs">
-                        ${usuarios.map(u => `
-                            <tr class="border-b border-slate-50">
-                                <td class="p-3">
-                                    <span class="font-bold text-slate-800">${u.usuario}</span><br>
-                                    <span class="text-slate-400 text-[11px]">${u.nome}</span>
-                                </td>
-                                <td class="p-3">${u.email || '-'}</td>
-                                <td class="p-3">
-                                    <select onchange="alterarPerfilUsuario(${u.id}, this.value)" class="campo p-1 text-xs rounded-lg border border-slate-200">
-                                        <option value="ADM" ${u.perfil === 'ADM' ? 'selected' : ''}>Administrador</option>
-                                        <option value="USER" ${u.perfil === 'USER' ? 'selected' : ''}>Usuário</option>
-                                    </select>
-                                </td>
-                                <td class="p-3">
-                                    <button onclick="abrirModalPermissoes(${u.id})" class="text-xs font-semibold px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100"><i class="fa-solid fa-key"></i> Configurar Menus (${u.permissoes ? u.permissoes.length : MODULOS_SISTEMA.length})</button>
-                                </td>
-                                <td class="p-3 text-right space-x-2">
-                                    <button onclick="alternarStatusUsuario(${u.id})" class="text-xs font-semibold px-2 py-1 ${u.ativo ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'} rounded-lg">
-                                        ${u.ativo ? 'Desativar' : 'Ativar'}
-                                    </button>
-                                    ${u.id !== usuarioLogado.id ? `<button onclick="removerUsuario(${u.id})" class="text-rose-600 hover:text-rose-800 font-semibold px-2 py-1 bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i></button>` : ''}
+                    <tbody class="divide-y divide-slate-100">
+                        ${usuarios.map(u => {
+                            const setorObj = setoresLiberacoes.find(s => s.nome === u.setor);
+                            const liberacao = setorObj ? setorObj.tipoLiberacao : (u.perfil === 'ADM' ? 'Acesso Total' : 'Geral');
+                            const totalModulos = u.permissoes ? u.permissoes.length : MODULOS_SISTEMA.length;
+                            return `
+                                <tr>
+                                    <td class="p-3 font-bold">${u.nome}<br><span class="font-normal text-slate-400">@${u.usuario}</span></td>
+                                    <td class="p-3 font-semibold text-slate-800">${u.setor || 'Não informado'}</td>
+                                    <td class="p-3 text-slate-500">${liberacao}</td>
+                                    <td class="p-3 font-semibold text-emerald-600">${totalModulos} de ${MODULOS_SISTEMA.length} módulos</td>
+                                    <td class="p-3 font-semibold">${u.perfil}</td>
+                                    <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${u.ativo ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
+                                    <td class="p-3 text-right">
+                                        <button onclick="alternarStatusUsuario(${u.id})" class="text-xs bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg font-bold">${u.ativo ? 'Desativar' : 'Ativar'}</button>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('form-usuario').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!validarPermissaoAdmin()) return;
+
+        const hash = await hashSenha(document.getElementById('us-senha').value);
+        const setorNome = document.getElementById('us-setor').value;
+        const setorObj = setoresLiberacoes.find(s => s.nome === setorNome);
+
+        const checkboxes = document.querySelectorAll('input[name="us-permissoes"]:checked');
+        const permissoesSelecionadas = Array.from(checkboxes).map(cb => cb.value);
+
+        usuarios.push({
+            id: DB.proximoId(usuarios),
+            nome: document.getElementById('us-nome').value,
+            usuario: document.getElementById('us-login').value,
+            email: document.getElementById('us-email').value,
+            senha: hash,
+            setor: setorNome,
+            liberacaoSetor: setorObj ? setorObj.tipoLiberacao : 'Geral',
+            perfil: document.getElementById('us-perfil').value,
+            ativo: true,
+            aprovado: true,
+            permissoes: permissoesSelecionadas
+        });
+        salvarTudo();
+        carregarUsuarios(container);
+    });
+}
+
+function alternarStatusUsuario(id) {
+    if (!validarPermissaoAdmin()) return;
+
+    const user = usuarios.find(u => u.id === id);
+    if (user && user.usuario !== 'wanderson') {
+        user.ativo = !user.ativo;
+        salvarTudo();
+        carregarUsuarios(document.getElementById('conteudo-pagina'));
+    }
+}
+
+// 6. CATEGORIAS E SUBCATEGORIAS
+function carregarCategorias(container) {
+    container.innerHTML = `
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 mb-6 w-full">
+            <h3 class="font-bold text-slate-900 text-sm mb-4">Adicionar Nova Categoria</h3>
+            <form id="form-categoria" class="flex gap-4">
+                <input type="text" id="cat-nome" placeholder="Nome da Categoria" required class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900">
+                <button type="submit" class="px-6 py-2.5 rounded-xl text-white font-bold text-xs shadow-sm transition" style="background-color: var(--cor-principal);">Salvar</button>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 w-full">
+            <h3 class="font-bold text-slate-900 text-sm mb-4">Categorias Mapeadas</h3>
+            <ul class="divide-y divide-slate-100">
+                ${categoriasProblema.map(c => `
+                    <li class="py-3 flex justify-between items-center text-xs">
+                        <span class="font-bold text-slate-800">${c.nome}</span>
+                        <span class="text-slate-400">${c.subcategorias ? c.subcategorias.join(', ') : 'Geral'}</span>
+                    </li>
+                `).join('')}
+            </ul>
+        </div>
+    `;
+
+    document.getElementById('form-categoria').addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!validarPermissaoAdmin()) return;
+
+        categoriasProblema.push({
+            id: DB.proximoId(categoriasProblema),
+            nome: document.getElementById('cat-nome').value,
+            subcategorias: ['Geral']
+        });
+        salvarTudo();
+        carregarCategorias(container);
+    });
+}
+
+// 7. SETORES E LIBERAÇÕES
+function carregarSetores(container) {
+    container.innerHTML = `
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 mb-6 w-full">
+            <h3 class="font-bold text-slate-900 text-sm mb-4">Cadastrar Novo Setor e Definir Regra de Liberação</h3>
+            <form id="form-setor" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <input type="text" id="st-nome" placeholder="Nome do Setor (Ex: Logística, Diretoria)" required class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900">
+                <input type="text" id="st-liberacao" placeholder="Tipo de Liberação / Alçada (Ex: Aprovação de Despesas)" required class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900">
+                <button type="submit" class="sm:col-span-2 py-3 rounded-xl text-white font-bold text-xs shadow-sm transition" style="background-color: var(--cor-principal);">Cadastrar Setor e Liberação</button>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 w-full">
+            <h3 class="font-bold text-slate-900 text-sm mb-4">Setores e Permissões Cadastradas</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-700">
+                    <thead class="bg-slate-50 uppercase text-[10px] text-slate-500">
+                        <tr>
+                            <th class="p-3">#ID</th>
+                            <th class="p-3">Nome do Setor</th>
+                            <th class="p-3">Nível / Regra de Liberação</th>
+                            <th class="p-3 text-right">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        ${setoresLiberacoes.map(s => `
+                            <tr>
+                                <td class="p-3 font-bold text-slate-400">#${s.id}</td>
+                                <td class="p-3 font-bold text-slate-900">${s.nome}</td>
+                                <td class="p-3 font-semibold text-slate-600">${s.tipoLiberacao}</td>
+                                <td class="p-3 text-right">
+                                    <button onclick="removerSetor(${s.id})" class="text-slate-400 hover:text-rose-600"><i class="fa-solid fa-trash"></i></button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -1131,111 +1068,116 @@ function carregarUsuarios(container) {
                 </table>
             </div>
         </div>
-
-        <div id="modal-permissoes" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-            <div class="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl">
-                <h3 class="font-bold text-slate-800 text-sm mb-1 flex items-center gap-2"><i class="fa-solid fa-shield-halved text-indigo-600"></i> Editar Módulos Permitidos</h3>
-                <p class="text-xs text-slate-400 mb-4">Selecione quais telas este usuário poderá visualizar no menu lateral:</p>
-                <div id="lista-checks-modal" class="space-y-2 max-h-60 overflow-y-auto p-3 bg-slate-50 rounded-xl border border-slate-200 mb-4"></div>
-                <div class="flex justify-end gap-2">
-                    <button onclick="fecharModalPermissoes()" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200">Cancelar</button>
-                    <button id="btn-salvar-modal-permissoes" class="px-4 py-2 rounded-xl text-white text-xs font-semibold" style="background-color: var(--cor-principal);">Salvar Permissões</button>
-                </div>
-            </div>
-        </div>
     `;
 
-    container.querySelector('#form-novo-usuario').addEventListener('submit', async e => {
+    document.getElementById('form-setor').addEventListener('submit', (e) => {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        const usuarioInput = formData.get('usuario');
-        
-        if (usuarios.some(u => u.usuario.toLowerCase() === usuarioInput.toLowerCase())) {
-            alert('Este nome de usuário já existe!');
-            return;
-        }
+        if (!validarPermissaoAdmin()) return;
 
-        const checkboxes = container.querySelectorAll('input[name="permissoes"]:checked');
-        const permissoes = Array.from(checkboxes).map(cb => cb.value);
-
-        const senhaHash = await hashSenha(formData.get('senha'));
-
-        const novoUser = {
-            id: DB.proximoId(usuarios),
-            usuario: usuarioInput,
-            nome: formData.get('nome'),
-            email: formData.get('email'),
-            senha: senhaHash,
-            perfil: formData.get('perfil'),
-            ativo: true,
-            aprovado: true,
-            permissoes: permissoes
-        };
-
-        usuarios.push(novoUser);
+        setoresLiberacoes.push({
+            id: DB.proximoId(setoresLiberacoes),
+            nome: document.getElementById('st-nome').value,
+            tipoLiberacao: document.getElementById('st-liberacao').value
+        });
         salvarTudo();
-        historicoAlteracoes.unshift({ data: new Date().toLocaleString('pt-BR'), acao: `Novo usuário criado: ${novoUser.usuario}`, usuario: usuarioLogado.usuario });
-        DB.set('historico', historicoAlteracoes);
-        alert('Usuário cadastrado com sucesso!');
-        carregarUsuarios(container);
+        carregarSetores(container);
     });
 }
 
-let usuarioEditandoId = null;
-function abrirModalPermissoes(id) {
-    usuarioEditandoId = id;
-    const u = usuarios.find(item => item.id === id);
-    if (!u) return;
-    const userPermissoes = u.permissoes || MODULOS_SISTEMA.map(m => m.id);
+function removerSetor(id) {
+    if (!validarPermissaoAdmin()) return;
 
-    const containerChecks = document.getElementById('lista-checks-modal');
-    containerChecks.innerHTML = MODULOS_SISTEMA.map(m => `
-        <label class="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
-            <input type="checkbox" value="${m.id}" ${userPermissoes.includes(m.id) ? 'checked' : ''} class="w-4 h-4 rounded text-indigo-600 accent-indigo-600 check-modal-perm">
-            ${m.nome}
-        </label>
-    `).join('');
-
-    document.getElementById('modal-permissoes').classList.remove('hidden');
-
-    document.getElementById('btn-salvar-modal-permissoes').onclick = () => {
-        const checks = document.querySelectorAll('.check-modal-perm:checked');
-        u.permissoes = Array.from(checks).map(c => c.value);
-        salvarTudo();
-        alert('Permissões atualizadas com sucesso!');
-        fecharModalPermissoes();
-        navegarPara('usuarios');
-    };
+    setoresLiberacoes = setoresLiberacoes.filter(s => s.id !== id);
+    salvarTudo();
+    carregarSetores(document.getElementById('conteudo-pagina'));
 }
 
-function fecharModalPermissoes() {
-    document.getElementById('modal-permissoes').classList.add('hidden');
-    usuarioEditandoId = null;
+// 8. APARÊNCIA E DESIGN
+function carregarAparencia(container) {
+    const ap = DB.get('aparencia', {});
+    const fonteAtual = ap.fonteTexto || CONFIG.fontePadrao;
+
+    container.innerHTML = `
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 w-full">
+            <h3 class="font-bold text-slate-900 text-sm mb-4">Personalização Visual e Branding</h3>
+            <form id="form-aparencia" class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold mb-1">Cor Principal (HEX)</label>
+                        <input type="color" id="ap-cor" value="${ap.corPrincipal || '#37a928'}" class="w-full h-10 rounded-xl cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold mb-1">Opacidade da Camada (${ap.opacidade || 20}%)</label>
+                        <input type="range" id="ap-opacidade" min="0" max="100" value="${ap.opacidade || 20}" class="w-full">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold mb-1">Fonte do Sistema</label>
+                        <select id="ap-fonte" class="w-full h-10 bg-slate-50 border border-slate-200 rounded-xl px-3 text-xs text-slate-900 font-semibold">
+                            <option value="Inter, sans-serif" ${fonteAtual.includes('Inter') ? 'selected' : ''}>Inter (Padrão)</option>
+                            <option value="Roboto, sans-serif" ${fonteAtual.includes('Roboto') ? 'selected' : ''}>Roboto</option>
+                            <option value="Poppins, sans-serif" ${fonteAtual.includes('Poppins') ? 'selected' : ''}>Poppins</option>
+                            <option value="'Open Sans', sans-serif" ${fonteAtual.includes('Open Sans') ? 'selected' : ''}>Open Sans</option>
+                            <option value="'Segoe UI', sans-serif" ${fonteAtual.includes('Segoe UI') ? 'selected' : ''}>Segoe UI</option>
+                            <option value="Montserrat, sans-serif" ${fonteAtual.includes('Montserrat') ? 'selected' : ''}>Montserrat</option>
+                            <option value="Arial, sans-serif" ${fonteAtual.includes('Arial') ? 'selected' : ''}>Arial</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold mb-1">Logotipo Personalizado</label>
+                        <input type="file" id="ap-logo" accept="image/*" class="text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold mb-1">Imagem de Fundo</label>
+                        <input type="file" id="ap-fundo" accept="image/*" class="text-xs">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full py-3 rounded-xl text-white font-bold text-xs shadow-sm transition" style="background-color: var(--cor-principal);">Aplicar e Salvar Alterações</button>
+            </form>
+        </div>
+    `;
+
+    document.getElementById('form-aparencia').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!validarPermissaoAdmin()) return;
+
+        let logoB64, fundoB64;
+
+        const fLogo = document.getElementById('ap-logo').files[0];
+        const fFundo = document.getElementById('ap-fundo').files[0];
+
+        if (fLogo) logoB64 = await Aparencia.lerImagem(fLogo);
+        if (fFundo) fundoB64 = await Aparencia.lerImagem(fFundo);
+
+        Aparencia.salvar(
+            logoB64,
+            fundoB64,
+            document.getElementById('ap-opacidade').value,
+            4,
+            document.getElementById('ap-cor').value,
+            '#000000',
+            document.getElementById('ap-fonte').value
+        );
+        alert('Configurações de aparência e tipografia atualizadas!');
+    });
 }
 
-function alterarPerfilUsuario(id, novoPerfil) {
-    const user = usuarios.find(u => u.id === id);
-    if (user) {
-        user.perfil = novoPerfil;
-        salvarTudo();
-        alert(`Permissão do usuário ${user.usuario} alterada para ${novoPerfil} com sucesso!`);
-    }
-}
-
-function alternarStatusUsuario(id) {
-    const user = usuarios.find(u => u.id === id);
-    if (user) {
-        user.ativo = !user.ativo;
-        user.aprovado = true;
-        salvarTudo();
-        navegarPara('usuarios');
-    }
-}
-
-function removerUsuario(id) {
-    if (confirm('Deseja realmente excluir este usuário?')) {
-        usuarios = usuarios.filter(u => u.id !== id);
-        salvarTudo();
-        navegarPara('usuarios');
-    }
+// 9. HISTÓRICO DE ATIVIDADES
+function carregarHistorico(container) {
+    container.innerHTML = `
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 w-full">
+            <h3 class="font-bold text-slate-900 text-sm mb-4">Auditoria e Registro de Eventos</h3>
+            <ul class="divide-y divide-slate-100 text-xs">
+                ${historicoAlteracoes.length > 0 ? historicoAlteracoes.map(h => `
+                    <li class="py-3 flex justify-between items-center">
+                        <span class="text-slate-800">${h.acao}</span>
+                        <span class="text-slate-400 text-[10px]">${h.data}</span>
+                    </li>
+                `).join('') : '<li class="py-4 text-center text-slate-400">Nenhum evento registrado ainda.</li>'}
+            </ul>
+        </div>
+    `;
 }
